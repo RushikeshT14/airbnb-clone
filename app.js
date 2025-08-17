@@ -1,13 +1,18 @@
+if (process.env.NODE_ENV != "production") {
+    require("dotenv").config();
+}
+
 const express = require("express");
 const app = express();
+const dbUrl = process.env.ATLASDB_URL
 const mongoose = require("mongoose");
-const MONGO_URL = "mongodb://127.0.0.1:27017/wanderLust";
 const path = require("path");
 const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
 const expressError = require("./utils/expressError.js");
 const flash = require("connect-flash");
 const session = require("express-session");
+const MongoStore = require("connect-mongo");
 const passport = require("passport");
 const LocalStategy = require("passport-local");
 const User = require("./models/user.js");
@@ -25,25 +30,12 @@ app.use(methodOverride("_method"));
 app.engine("ejs", ejsMate);
 app.use(express.static(path.join(__dirname, "/public")));
 
-const sessionOption = {
-    secret: "mysecretcode",
-    resave: false,
-    saveUninitialized: true,
-    cookie: {
-        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        httpOnlu: true
-
-    }
-};
-
 
 
 
 async function main() {
-    await mongoose.connect(MONGO_URL);
+    await mongoose.connect(dbUrl);
 }
-
 main().then(() => {
     console.log("Succesfully Connected to DB wanderLust");
 }).catch((err) => {
@@ -51,25 +43,35 @@ main().then(() => {
 })
 
 
+const store = MongoStore.create({
+    mongoUrl: dbUrl,
+    crypto: {
+        secret: process.env.SECRET,
+    },
+    touchAfter: 24 * 3600,
+});
+store.on("error", () => {
+    console.log("error in mongo session store", err)
+});
 
-//root
-app.get("/", (req, res) => {
-    res.send("this is root");
-})
-
-
+const sessionOption = {
+    store,
+    secret: process.env.SECRET
+    ,
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        httpOnly: true
+    }
+};
 
 app.use(session(sessionOption));
 app.use(flash());
 
 app.use(passport.initialize());
 app.use(passport.session());
-passport.use(new LocalStategy(User.authenticate()));
-
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
-
-
 
 app.use((req, res, next) => {
     res.locals.success = req.flash("success");
@@ -77,6 +79,20 @@ app.use((req, res, next) => {
     res.locals.currUser = req.user;
     next();
 });
+
+//root
+// app.get("/", (req, res) => {
+//     res.send("this is root");
+// })
+
+
+
+passport.use(new LocalStategy(User.authenticate()));
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
+
+
 
 // app.get("/demouser", async (req, res) => {
 //     let fakeUser = new User({
@@ -86,6 +102,7 @@ app.use((req, res, next) => {
 //     let regUser = await User.register(fakeUser, "helloworld");
 //     res.send(regUser);
 // });
+
 
 app.use("/listings", listingsRouter);
 app.use("/listings/:id/reviews", reviewsRouter);
