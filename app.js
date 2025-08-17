@@ -50,7 +50,7 @@ const store = MongoStore.create({
     },
     touchAfter: 24 * 3600,
 });
-store.on("error", () => {
+store.on("error", (err) => {
     console.log("error in mongo session store", err)
 });
 
@@ -118,7 +118,13 @@ app.use((err, req, res, next) => {
     // res.status(statusCode).send(message);
 });
 
+const port = process.env.PORT || 8080;
 
-app.listen(8080, () => {
-    console.log("server is listining on 8080");
-}); 
+app.listen(port, () => {
+    console.log(`server is listening on ${port}`);
+});
+
+
+// app.listen(8080, () => {
+//     console.log("server is listining on 8080");
+// }); 
