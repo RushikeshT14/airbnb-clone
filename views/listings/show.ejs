@@ -23,16 +23,11 @@
                     <p class="card-text">
                         <%=data.country %>
                     </p>
-
-
                 </div>
             </div>
-
-
         </div>
 
         <% if(currUser && currUser._id.equals(data.owner._id)){ %>
-
             <div class="btns">
                 <a href="/listings/<%=data._id%>/edit" class="btn btn-dark col-1 offset-3 add-bnt">Edit</a>
                 <form action="/listings/<%=data._id %>?_method=DELETE" method="post">
